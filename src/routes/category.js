@@ -5,6 +5,9 @@ const categoryModel = require("../models/category");
 
 categoryRouter.post("/categories",async (req,res) => {
     try {
+        if (!req.body.name) {
+            return res.status(400).send({ message: "Category name is required" });
+        }
         const categoryName = req.body;
         const addCategory = new categoryModel(categoryName);
         await addCategory.save();

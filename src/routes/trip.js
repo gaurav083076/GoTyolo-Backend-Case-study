@@ -6,6 +6,18 @@ const categoryModel = require("../models/category")
 tripRouter.post("/trips",async (req,res) => {
     try {
         const tripDetails = req.body;
+        if (new Date(tripDetails.endDate) < new Date(tripDetails.startDate)) {
+            return res.status(400).send({
+                message: "End date must be after start date"
+            });
+        }
+
+        if (tripDetails.availableSeat > tripDetails.maxCapacity) {
+            return res.status(400).send({
+                message: "Available seats cannot exceed max capacity"
+            });
+            }
+
         const addTrip = new tripModel(tripDetails);
 
         if (tripDetails.categories && tripDetails.categories.length > 0) {
@@ -34,16 +46,20 @@ tripRouter.post("/trips",async (req,res) => {
 tripRouter.post("/trips/:id/book",async (req,res) => {
     try{
     const _id = req.params.id;
-    const trip = await tripModel.findById(_id);
+    const trip = await tripModel.findOneAndUpdate(
+                {
+                    _id,
+                    status: "Published",
+                    availableSeat: { $gt: 0 },
+                    startDate: { $gt: new Date() }
+                },
+                { $inc: { availableSeat: -1 } },
+                { new: true }
+                );
 
     if (!trip)
-        return res.status(404).send({message:"Trip not found"});
-
-    if (trip.availableSeat === 0)
-        return res.status(400).send({message:"No seat available"});
-
-    trip.availableSeat = trip.availableSeat - 1;
-    await trip.save();
+        return res.status(409).send({message:"No seat available"});
+    
     res.status(200).send({
         message:"Booking successful",
         availableSeat:trip.availableSeat
@@ -64,7 +80,7 @@ tripRouter.get("/trips",async (req,res) => {
         const filter = {status:'Published'};
         if (destination)
         {
-            filter.destination = destination;
+            filter.destination = destination.toLowerCase();
         } 
         if (startDate)
         {
@@ -72,7 +88,7 @@ tripRouter.get("/trips",async (req,res) => {
         }
         if (category) 
         {
-            filter.categories = category;
+            filter.categories = { $in: [category] };
         }
         if (minPrice || maxPrice)
         {
@@ -98,7 +114,9 @@ tripRouter.get("/trips",async (req,res) => {
 tripRouter.get("/trips/:id",async (req,res) => {
     try{
         const _id = req.params.id;
+        console.log(_id)
         const tripDetails = await tripModel.findById(_id).populate("categories","name -_id");
+        console.log(tripDetails)
         if (!tripDetails)
         {
             return res.status(404).send({ message: "No trip found" });

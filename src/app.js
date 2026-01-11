@@ -18,4 +18,5 @@ connectDb().then(() => {
 })
 .catch((error) => {
     console.error("Database not connected successfully!",error.message);
+    process.exit(1);
 })

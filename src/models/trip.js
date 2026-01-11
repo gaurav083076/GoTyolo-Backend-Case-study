@@ -3,15 +3,16 @@ const mongoose = require("mongoose");
 const tripSchema = new mongoose.Schema({
     title:{
         type:String,
-        required:true
+        required:true,
     },
     destination:{
         type:String,
-        required:true
+        required:true,
+        lowercase: true
     },
     startDate:{
         type:Date,
-        required:true
+        required:true,
     },
     endDate: {
         type:Date,
