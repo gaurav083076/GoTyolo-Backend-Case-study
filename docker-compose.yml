@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "7777:7777"
+    environment:
+      - PORT=7777
+      - DB_CONNECTION_SECRET=mongodb://mongo:27017/gotyolo
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
