@@ -16,7 +16,10 @@ app.post("/categories",async (req,res) => {
     }
     catch(err)
     {
-        res.status(500).send("Error: "+err);
+        if (err.name === "ValidationError")
+            res.status(400).send("Error: " + err.message);
+        else
+            res.status(500).send("Error: " + err.message);
     }
 })
 
@@ -37,6 +40,15 @@ app.post("/trips",async (req,res) => {
     try {
         const tripDetails = req.body;
         const addTrip = new tripModel(tripDetails);
+
+        if (tripDetails.categories && tripDetails.categories.length > 0) {
+            const validCategories = await categoryModel.find({
+            _id: { $in: tripDetails.categories }
+            });
+        if (validCategories.length !== tripDetails.categories.length) {
+            return res.status(400).send({ message: "Invalid category ID" });
+            }
+        }        
         await addTrip.save();
         res.status(201).send({
             "message":"Trip added successfully",
@@ -50,6 +62,33 @@ app.post("/trips",async (req,res) => {
         else
             res.status(500).send("Error: "+err.message);
     }
+})
+
+app.post("/trips/:id/book",async (req,res) => {
+    try{
+    const _id = req.params.id;
+    const trip = await tripModel.findById(_id);
+
+    if (!trip)
+        return res.status(404).send({message:"Trip not found"});
+
+    if (trip.availableSeat === 0)
+        return res.status(400).send({message:"No seat available"});
+
+    trip.availableSeat = trip.availableSeat - 1;
+    await trip.save();
+    res.status(200).send({
+        message:"Booking successful",
+        availableSeat:trip.availableSeat
+    })
+  }
+  catch(err)
+  {
+    if (err.name === "CastError")
+        res.status(400).send({ message: "Invalid trip ID" });
+    else
+        res.status(500).send("Error: "+err.message);
+  }
 })
 
 app.get("/trips",async (req,res) => {
@@ -88,6 +127,26 @@ app.get("/trips",async (req,res) => {
         res.status(500).send("Error: "+err.message);
     }
 })
+
+app.get("/trips/:id",async (req,res) => {
+    try{
+        const _id = req.params.id;
+        const tripDetails = await tripModel.findById(_id).populate("categories","name -_id");
+        if (!tripDetails)
+        {
+            return res.status(404).send({ message: "No trip found" });
+        }
+        res.status(200).send(tripDetails);
+    }
+    catch(err)
+    {
+        if (err.name === "CastError")
+            res.status(400).send({ message: "Invalid trip ID" });
+        else
+        res.status(500).send("Error: "+err.message);
+    }
+})
+
 
 connectDb().then(() => {
     app.listen(process.env.PORT, () => {
